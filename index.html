@@ -128,6 +128,8 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 .music.on svg{animation:spin 4s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Cánh hoa rơi */
+#petals{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity 1s ease,transform 1s ease}
 .reveal.in{opacity:1;transform:none}
 @media (max-width:600px){
@@ -319,6 +321,8 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 <!-- Muốn có nhạc nền: thêm file music.mp3 vào repo (cùng thư mục với index.html) -->
 <audio id="bgm" src="music.mp3" loop preload="none"></audio>
 
+<canvas id="petals" aria-hidden="true"></canvas>
+
 <script>
 (function(){
   // Tên khách mời qua link: ...?to=Anh%20Nam
@@ -383,6 +387,40 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
   var wName=document.getElementById('wName'),wAttend=document.getElementById('wAttend'),wMsg=document.getElementById('wMsg');
   function alertBox(){ var n=document.createElement('p'); n.className='note'; n.textContent='Cảm ơn bạn đã gửi lời chúc! ♥'; list.prepend(n); setTimeout(function(){n.remove()},3500); }
   render();
+
+
+  // Cánh hoa rơi
+  (function(){
+    var cv=document.getElementById('petals'), ctx=cv.getContext('2d');
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){cv.remove();return}
+    var W,H,dpr=Math.min(window.devicePixelRatio||1,2),P=[],colors=['#f7c6cf','#f4a7b6','#fbd9de','#e98a9e','#fde4e8'];
+    function size(){W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+    size(); addEventListener('resize',size);
+    var N=W<600?22:38;
+    function mk(top){return{x:Math.random()*W,y:top?-20-Math.random()*H:Math.random()*H,s:7+Math.random()*9,vy:.6+Math.random()*1.1,vx:-.4+Math.random()*.8,a:Math.random()*6.28,va:-.03+Math.random()*.06,sw:Math.random()*6.28,c:colors[Math.random()*colors.length|0],f:Math.random()*6.28}}
+    for(var i=0;i<N;i++)P.push(mk(false));
+    function petal(p){
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a);
+      ctx.scale(1,Math.abs(Math.cos(p.f))*.6+.4);  // lật cánh hoa
+      ctx.beginPath(); ctx.moveTo(0,-p.s);
+      ctx.bezierCurveTo(p.s*.9,-p.s*.6,p.s*.7,p.s*.6,0,p.s);
+      ctx.bezierCurveTo(-p.s*.7,p.s*.6,-p.s*.9,-p.s*.6,0,-p.s);
+      ctx.fillStyle=p.c; ctx.globalAlpha=.85; ctx.fill();
+      ctx.restore();
+    }
+    var on=true; document.addEventListener('visibilitychange',function(){on=!document.hidden; if(on)requestAnimationFrame(loop)});
+    function loop(){
+      if(!on)return;
+      ctx.clearRect(0,0,W,H);
+      for(var i=0;i<P.length;i++){var p=P[i];
+        p.sw+=.02; p.x+=p.vx+Math.sin(p.sw)*.6; p.y+=p.vy; p.a+=p.va; p.f+=.03;
+        if(p.y>H+20||p.x<-30||p.x>W+30)P[i]=mk(true);
+        petal(P[i]);
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  })();
 
   // Reveal on scroll
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
