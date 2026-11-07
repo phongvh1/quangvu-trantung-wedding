@@ -130,10 +130,6 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 
 /* Cánh hoa rơi */
 #petals{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
-#inapp{position:fixed;left:12px;right:12px;bottom:76px;z-index:55;background:#2a1214;color:#fff;border-radius:10px;padding:12px 40px 12px 14px;font-size:13.5px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.35);display:none}
-#inapp.show{display:block}
-#inapp a{display:inline-block;margin-top:8px;background:#f1d9a8;color:#2a1214;padding:6px 12px;border-radius:999px;text-decoration:none;font-weight:600}
-#inapp .close{position:absolute;top:6px;right:8px;background:none;border:0;color:#fff;font-size:22px;cursor:pointer}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity 1s ease,transform 1s ease}
 .reveal.in{opacity:1;transform:none}
 @media (max-width:600px){
@@ -325,12 +321,6 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 <!-- Nhạc nền: "Một Nhà" lấy từ repo thu-phong-wedding -->
 <audio id="bgm" loop preload="auto"></audio>
 
-<div id="inapp" role="status">
-  <button class="close" aria-label="Đóng">×</button>
-  🎵 Zalo đang chặn nhạc nền. Để nghe nhạc, bấm <b>⋯</b> ở góc trên bên phải → <b>Mở bằng trình duyệt</b>.
-  <div id="inappBtn"></div>
-</div>
-
 <canvas id="petals" aria-hidden="true"></canvas>
 
 <script>
@@ -341,48 +331,32 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 
   // Mở thiệp + nhạc
   var bgm=document.getElementById('bgm'), mb=document.getElementById('musicBtn');
-  // Chọn 1 nguồn nhạc duy nhất trước khi khách bấm (trình duyệt trong Zalo không chịu thử nhiều nguồn)
-  var LOCAL='motnha.mp3', BACKUP='https://phongvh1.github.io/thu-phong-wedding/motnha.mp3';
+  // Chọn 1 nguồn nhạc duy nhất (trình duyệt trong Zalo không chịu thử nhiều nguồn)
+  var LOCAL='motnha.mp3', BACKUP='https://phongvh1.github.io/thu-phong-wedding/motnha.mp3', switched=false;
   bgm.src=LOCAL; bgm.volume=0.5;
-  bgm.addEventListener('error',function(){ if(bgm.src.indexOf(BACKUP)<0){ bgm.src=BACKUP; bgm.load(); } });
-  try{ fetch(LOCAL,{method:'HEAD'}).then(function(r){ if(!r.ok){ bgm.src=BACKUP; bgm.load(); } }).catch(function(){}); }catch(e){}
+  bgm.addEventListener('error',function(){
+    if(switched) return; switched=true;            // chỉ đổi sang nguồn dự phòng 1 lần
+    bgm.src=BACKUP; bgm.load(); if(want) start();
+  });
 
-  var want=false, pending=false, failed=false;
-  function play(){
-    if(pending) return;
-    pending=true;
+  var want=false, isPlaying=false;
+  function start(){
     var r=bgm.play();
-    if(r&&r.then){ r.then(function(){pending=false;failed=false;hideTip()}).catch(function(e){pending=false;failed=true;console.warn('Không phát được nhạc:',e);showTip()}); }
-    else pending=false;
+    if(r&&r.catch) r.catch(function(e){ console.warn('Không phát được nhạc:',e); });
   }
-  bgm.addEventListener('play',function(){mb.classList.add('on')});
-  bgm.addEventListener('playing',function(){hideTip()});
-  bgm.addEventListener('pause',function(){mb.classList.remove('on')});
-  document.getElementById('openBtn').onclick=function(e){ e.stopPropagation(); document.getElementById('intro').classList.add('hide'); document.body.style.overflow=''; want=true; play(); };
+  bgm.addEventListener('playing',function(){ isPlaying=true; mb.classList.add('on'); });
+  bgm.addEventListener('pause',function(){ isPlaying=false; mb.classList.remove('on'); });
+  document.getElementById('openBtn').onclick=function(e){ e.stopPropagation(); document.getElementById('intro').classList.add('hide'); document.body.style.overflow=''; want=true; start(); };
   document.body.style.overflow='hidden';
-  mb.onclick=function(e){ e.stopPropagation(); if(bgm.paused){want=true;play()}else{want=false;bgm.pause()} };
-  // Điện thoại hay tự dừng nhạc khi chuyển app / khoá màn hình: chạm vào trang để phát lại
-  function resume(){ if(want&&bgm.paused&&!pending) play(); }
+  // Nút nhạc: dựa vào trạng thái nhạc THỰC SỰ đang phát -> 1 chạm là bật/tắt
+  mb.onclick=function(e){ e.stopPropagation(); if(isPlaying){ want=false; bgm.pause(); } else { want=true; start(); } };
+  // Nếu nhạc chưa chạy (điện thoại tự dừng, mạng chậm...) thì chạm vào trang sẽ phát
+  function resume(){ if(want&&!isPlaying) start(); }
   document.addEventListener('click',resume);
+  document.addEventListener('touchend',resume,{passive:true});
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) resume(); });
   window.addEventListener('pageshow',function(e){ if(e.persisted){ want=true; resume(); } });
-  function showTip(){ var t=document.getElementById('inapp'); if(t&&t.dataset.inapp) t.classList.add('show'); }
-  function hideTip(){ var t=document.getElementById('inapp'); if(t) t.classList.remove('show'); }
 
-
-  // Trình duyệt trong app (Zalo, Facebook, Messenger...) hay chặn nhạc -> gợi ý mở bằng trình duyệt
-  (function(){
-    var ua=navigator.userAgent||'', inApp=/Zalo|FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\//i.test(ua);
-    if(!inApp) return;
-    var box=document.getElementById('inapp');
-    if(!/Zalo/i.test(ua)) box.childNodes[2].textContent=' Ứng dụng này đang chặn nhạc nền. Để nghe nhạc, bấm ';
-    box.querySelector('.close').onclick=function(e){e.stopPropagation();box.classList.remove('show')};
-    if(/Android/i.test(ua)){
-      var u=location.href.replace(/^https?:\/\//,'');
-      document.getElementById('inappBtn').innerHTML='<a href="intent://'+u+'#Intent;scheme=https;package=com.android.chrome;end">Mở bằng Chrome</a>';
-    }
-    box.dataset.inapp='1'; if(failed) box.classList.add('show');
-  })();
 
   // Countdown
   var target=new Date('2026-11-16T10:30:00+07:00').getTime();
