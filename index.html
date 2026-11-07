@@ -323,10 +323,7 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
 </button>
 <!-- Nhạc nền: "Một Nhà" lấy từ repo thu-phong-wedding -->
-<audio id="bgm" loop preload="auto">
-  <source src="motnha.mp3" type="audio/mpeg">
-  <source src="https://phongvh1.github.io/thu-phong-wedding/motnha.mp3" type="audio/mpeg">
-</audio>
+<audio id="bgm" loop preload="auto"></audio>
 
 <div id="inapp" role="status">
   <button class="close" aria-label="Đóng">×</button>
@@ -344,20 +341,33 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 
   // Mở thiệp + nhạc
   var bgm=document.getElementById('bgm'), mb=document.getElementById('musicBtn');
-  bgm.volume=0.5;
-  var want=false; // khách muốn nghe nhạc
-  function play(){ var r=bgm.play(); if(r&&r.catch){r.catch(function(e){console.warn('Không phát được nhạc:',e)})} }
+  // Chọn 1 nguồn nhạc duy nhất trước khi khách bấm (trình duyệt trong Zalo không chịu thử nhiều nguồn)
+  var LOCAL='motnha.mp3', BACKUP='https://phongvh1.github.io/thu-phong-wedding/motnha.mp3';
+  bgm.src=LOCAL; bgm.volume=0.5;
+  bgm.addEventListener('error',function(){ if(bgm.src.indexOf(BACKUP)<0){ bgm.src=BACKUP; bgm.load(); } });
+  try{ fetch(LOCAL,{method:'HEAD'}).then(function(r){ if(!r.ok){ bgm.src=BACKUP; bgm.load(); } }).catch(function(){}); }catch(e){}
+
+  var want=false, pending=false, failed=false;
+  function play(){
+    if(pending) return;
+    pending=true;
+    var r=bgm.play();
+    if(r&&r.then){ r.then(function(){pending=false;failed=false;hideTip()}).catch(function(e){pending=false;failed=true;console.warn('Không phát được nhạc:',e);showTip()}); }
+    else pending=false;
+  }
   bgm.addEventListener('play',function(){mb.classList.add('on')});
+  bgm.addEventListener('playing',function(){hideTip()});
   bgm.addEventListener('pause',function(){mb.classList.remove('on')});
-  document.getElementById('openBtn').onclick=function(){ document.getElementById('intro').classList.add('hide'); document.body.style.overflow=''; want=true; play(); };
+  document.getElementById('openBtn').onclick=function(e){ e.stopPropagation(); document.getElementById('intro').classList.add('hide'); document.body.style.overflow=''; want=true; play(); };
   document.body.style.overflow='hidden';
   mb.onclick=function(e){ e.stopPropagation(); if(bgm.paused){want=true;play()}else{want=false;bgm.pause()} };
-  // Điện thoại hay tự dừng nhạc khi chuyển app / khoá màn hình / mở lại trang:
-  // chạm bất kỳ đâu trên trang sẽ phát lại nhạc
-  function resume(){ if(want&&bgm.paused) play(); }
-  ['touchend','click'].forEach(function(t){document.addEventListener(t,resume,{passive:true})});
+  // Điện thoại hay tự dừng nhạc khi chuyển app / khoá màn hình: chạm vào trang để phát lại
+  function resume(){ if(want&&bgm.paused&&!pending) play(); }
+  document.addEventListener('click',resume);
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) resume(); });
   window.addEventListener('pageshow',function(e){ if(e.persisted){ want=true; resume(); } });
+  function showTip(){ var t=document.getElementById('inapp'); if(t&&t.dataset.inapp) t.classList.add('show'); }
+  function hideTip(){ var t=document.getElementById('inapp'); if(t) t.classList.remove('show'); }
 
 
   // Trình duyệt trong app (Zalo, Facebook, Messenger...) hay chặn nhạc -> gợi ý mở bằng trình duyệt
@@ -371,9 +381,7 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
       var u=location.href.replace(/^https?:\/\//,'');
       document.getElementById('inappBtn').innerHTML='<a href="intent://'+u+'#Intent;scheme=https;package=com.android.chrome;end">Mở bằng Chrome</a>';
     }
-    document.getElementById('openBtn').addEventListener('click',function(){
-      setTimeout(function(){ if(bgm.paused||bgm.currentTime<0.2) box.classList.add('show'); },2500);
-    });
+    box.dataset.inapp='1'; if(failed) box.classList.add('show');
   })();
 
   // Countdown
