@@ -140,7 +140,7 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
   .big-date{gap:10px}.big-date .day{font-size:52px}.big-date .side{font-size:12px;padding:5px 8px}
   .countdown-sec{background-attachment:scroll}
 }
-@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.hero img{animation:none}}
+
 </style>
 </head>
 <body>
@@ -392,7 +392,6 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
   // Cánh hoa rơi
   (function(){
     var cv=document.getElementById('petals'), ctx=cv.getContext('2d');
-    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){cv.remove();return}
     var W,H,dpr=Math.min(window.devicePixelRatio||1,2),P=[],colors=['#f7c6cf','#f4a7b6','#fbd9de','#e98a9e','#fde4e8'];
     function size(){W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
     size(); addEventListener('resize',size);
