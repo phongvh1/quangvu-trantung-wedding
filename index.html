@@ -130,6 +130,10 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 
 /* Cánh hoa rơi */
 #petals{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
+#inapp{position:fixed;left:12px;right:12px;bottom:76px;z-index:55;background:#2a1214;color:#fff;border-radius:10px;padding:12px 40px 12px 14px;font-size:13.5px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.35);display:none}
+#inapp.show{display:block}
+#inapp a{display:inline-block;margin-top:8px;background:#f1d9a8;color:#2a1214;padding:6px 12px;border-radius:999px;text-decoration:none;font-weight:600}
+#inapp .close{position:absolute;top:6px;right:8px;background:none;border:0;color:#fff;font-size:22px;cursor:pointer}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity 1s ease,transform 1s ease}
 .reveal.in{opacity:1;transform:none}
 @media (max-width:600px){
@@ -320,10 +324,16 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 </button>
 <!-- Nhạc nền: "Một Nhà" lấy từ repo thu-phong-wedding -->
 <audio id="bgm" loop preload="none">
-  <source src="https://raw.githubusercontent.com/phongvh1/thu-phong-wedding/main/motnha.mp3" type="audio/mpeg">
-  <source src="https://phongvh1.github.io/thu-phong-wedding/motnha.mp3" type="audio/mpeg">
   <source src="motnha.mp3" type="audio/mpeg">
+  <source src="https://phongvh1.github.io/thu-phong-wedding/motnha.mp3" type="audio/mpeg">
+  <source src="https://raw.githubusercontent.com/phongvh1/thu-phong-wedding/main/motnha.mp3" type="audio/mpeg">
 </audio>
+
+<div id="inapp" role="status">
+  <button class="close" aria-label="Đóng">×</button>
+  🎵 Zalo đang chặn nhạc nền. Để nghe nhạc, bấm <b>⋯</b> ở góc trên bên phải → <b>Mở bằng trình duyệt</b>.
+  <div id="inappBtn"></div>
+</div>
 
 <canvas id="petals" aria-hidden="true"></canvas>
 
@@ -335,10 +345,36 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 
   // Mở thiệp + nhạc
   var bgm=document.getElementById('bgm'), mb=document.getElementById('musicBtn');
-  function play(){ bgm.play().then(function(){mb.classList.add('on')}).catch(function(){mb.style.display='none'}); }
-  document.getElementById('openBtn').onclick=function(){ document.getElementById('intro').classList.add('hide'); document.body.style.overflow=''; play(); };
+  var want=false; // khách muốn nghe nhạc
+  function play(){ var r=bgm.play(); if(r&&r.catch){r.catch(function(e){console.warn('Không phát được nhạc:',e)})} }
+  bgm.addEventListener('play',function(){mb.classList.add('on')});
+  bgm.addEventListener('pause',function(){mb.classList.remove('on')});
+  document.getElementById('openBtn').onclick=function(){ document.getElementById('intro').classList.add('hide'); document.body.style.overflow=''; want=true; play(); };
   document.body.style.overflow='hidden';
-  mb.onclick=function(){ if(bgm.paused){play()}else{bgm.pause();mb.classList.remove('on')} };
+  mb.onclick=function(e){ e.stopPropagation(); if(bgm.paused){want=true;play()}else{want=false;bgm.pause()} };
+  // Điện thoại hay tự dừng nhạc khi chuyển app / khoá màn hình / mở lại trang:
+  // chạm bất kỳ đâu trên trang sẽ phát lại nhạc
+  function resume(){ if(want&&bgm.paused) play(); }
+  ['touchend','click'].forEach(function(t){document.addEventListener(t,resume,{passive:true})});
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) resume(); });
+  window.addEventListener('pageshow',function(e){ if(e.persisted){ want=true; resume(); } });
+
+
+  // Trình duyệt trong app (Zalo, Facebook, Messenger...) hay chặn nhạc -> gợi ý mở bằng trình duyệt
+  (function(){
+    var ua=navigator.userAgent||'', inApp=/Zalo|FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\//i.test(ua);
+    if(!inApp) return;
+    var box=document.getElementById('inapp');
+    if(!/Zalo/i.test(ua)) box.childNodes[2].textContent=' Ứng dụng này đang chặn nhạc nền. Để nghe nhạc, bấm ';
+    box.querySelector('.close').onclick=function(e){e.stopPropagation();box.classList.remove('show')};
+    if(/Android/i.test(ua)){
+      var u=location.href.replace(/^https?:\/\//,'');
+      document.getElementById('inappBtn').innerHTML='<a href="intent://'+u+'#Intent;scheme=https;package=com.android.chrome;end">Mở bằng Chrome</a>';
+    }
+    document.getElementById('openBtn').addEventListener('click',function(){
+      setTimeout(function(){ if(bgm.paused||bgm.currentTime<0.2) box.classList.add('show'); },2500);
+    });
+  })();
 
   // Countdown
   var target=new Date('2026-11-16T10:30:00+07:00').getTime();
