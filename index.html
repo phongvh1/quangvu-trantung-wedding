@@ -323,10 +323,9 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
 </button>
 <!-- Nhạc nền: "Một Nhà" lấy từ repo thu-phong-wedding -->
-<audio id="bgm" loop preload="none">
+<audio id="bgm" loop preload="auto">
   <source src="motnha.mp3" type="audio/mpeg">
   <source src="https://phongvh1.github.io/thu-phong-wedding/motnha.mp3" type="audio/mpeg">
-  <source src="https://raw.githubusercontent.com/phongvh1/thu-phong-wedding/main/motnha.mp3" type="audio/mpeg">
 </audio>
 
 <div id="inapp" role="status">
@@ -345,6 +344,7 @@ footer .script{font-size:52px;color:#f1d9a8;line-height:1.1}
 
   // Mở thiệp + nhạc
   var bgm=document.getElementById('bgm'), mb=document.getElementById('musicBtn');
+  bgm.volume=0.5;
   var want=false; // khách muốn nghe nhạc
   function play(){ var r=bgm.play(); if(r&&r.catch){r.catch(function(e){console.warn('Không phát được nhạc:',e)})} }
   bgm.addEventListener('play',function(){mb.classList.add('on')});
